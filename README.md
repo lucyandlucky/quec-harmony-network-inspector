@@ -13,6 +13,8 @@ npm run icons
 npm start
 ```
 
+The renderer uses React, TypeScript and Vite. `npm start` type-checks and builds both Electron and the renderer before launching. For live renderer development, use `npm run dev`; `npm run typecheck` and `npm test` check the TypeScript source, protocol behavior and renderer interactions.
+
 The app selects the first available device automatically. Requests appear as soon as they start. Select one to inspect its headers, bodies, status and duration, or copy a cURL command. The package filter separates events from apps that include the inspector reporter.
 
 For a macOS app bundle, run `npm run pack:mac`. The result is under `dist/mac*/Quec Network Inspector.app`.

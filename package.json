@@ -3,17 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "description": "Desktop network inspector for QuecWireless HarmonyOS apps",
-  "main": "src/main.cjs",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "start": "electron .",
-    "test": "node --test",
+    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && cross-env QNI_RENDERER_URL=http://127.0.0.1:5173 electron .\"",
+    "start": "npm run build && electron .",
+    "build": "npm run typecheck && npm run build:main && npm run build:renderer",
+    "build:main": "esbuild src/main.ts src/preload.ts --bundle --platform=node --format=cjs --target=node22 --outdir=dist-electron --external:electron",
+    "build:renderer": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts && vitest run",
     "icons": "node scripts/copy-icons.cjs",
-    "pack:mac": "electron-builder --mac dir -c.mac.identity=null"
+    "pack:mac": "npm run build && electron-builder --mac dir -c.mac.identity=null"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.20.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "concurrently": "10.0.5",
+    "cross-env": "10.1.0",
     "electron": "44.5.0",
     "electron-builder": "26.15.3",
-    "lucide-static": "1.48.0"
+    "esbuild": "0.28.2",
+    "jsdom": "29.1.1",
+    "lucide-static": "1.48.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.2",
+    "wait-on": "9.5.1"
   },
   "build": {
     "appId": "com.quectel.networkinspector",
@@ -22,7 +44,8 @@
       "output": "dist"
     },
     "files": [
-      "src/**/*",
+      "dist-electron/**/*",
+      "dist-renderer/**/*",
       "package.json"
     ],
     "mac": {
