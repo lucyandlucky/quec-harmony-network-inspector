@@ -54,9 +54,13 @@ function durationOf(item) {
   return `${item.durationMs} ms`;
 }
 
+function requestsForDevice() {
+  return [...transactions.values()].filter((item) => item.device === deviceSelect.value);
+}
+
 function filteredRequests() {
   const query = requestSearch.value.trim().toLowerCase();
-  return [...transactions.values()]
+  return requestsForDevice()
     .filter((item) => (!appFilter.value || item.bundleName === appFilter.value) &&
       (!query || `${item.method} ${item.url} ${item.status || ''}`.toLowerCase().includes(query)))
     .sort((a, b) => b.startedAt - a.startedAt || b.time - a.time);
@@ -64,7 +68,7 @@ function filteredRequests() {
 
 function updateAppOptions() {
   const previous = appFilter.value;
-  const names = [...new Set([...transactions.values()].map((item) => item.bundleName))].sort();
+  const names = [...new Set(requestsForDevice().map((item) => item.bundleName))].sort();
   appFilter.replaceChildren(new Option('全部应用', ''));
   for (const name of names) appFilter.add(new Option(name, name));
   appFilter.value = names.includes(previous) ? previous : '';
@@ -72,7 +76,7 @@ function updateAppOptions() {
 
 function renderList() {
   const items = filteredRequests();
-  $('request-count').textContent = String(transactions.size);
+  $('request-count').textContent = String(requestsForDevice().length);
   $('visible-count').textContent = `显示 ${items.length} 条`;
   requestList.replaceChildren();
   if (!items.length) {
@@ -155,9 +159,10 @@ function renderContent(item) {
 
 function renderDetail() {
   const item = transactions.get(selectedKey);
-  $('detail-empty').hidden = Boolean(item);
-  $('detail-view').hidden = !item;
-  if (!item) return;
+  const visibleItem = item && item.device === deviceSelect.value ? item : null;
+  $('detail-empty').hidden = Boolean(visibleItem);
+  $('detail-view').hidden = !visibleItem;
+  if (!visibleItem) return;
   $('detail-package').textContent = item.bundleName;
   $('detail-time').textContent = timeOf(item.startedAt);
   $('detail-method').textContent = item.method;
@@ -173,6 +178,16 @@ function renderDetail() {
   renderContent(item);
 }
 
+function renderDevice() {
+  updateAppOptions();
+  const selected = transactions.get(selectedKey);
+  if (!selected || selected.device !== deviceSelect.value) {
+    selectedKey = requestsForDevice().sort((a, b) => b.startedAt - a.startedAt)[0]?.key || '';
+  }
+  renderList();
+  renderDetail();
+}
+
 function renderConnection(status) {
   connectionState = status.state;
   connectedSerial = status.state === 'connected' ? status.serial : '';
@@ -184,12 +199,13 @@ function renderConnection(status) {
   $('connection-button').setAttribute('aria-label', $('connection-button').title);
   $('connection-icon').src = connectedSerial ? 'icons/pause.svg' : 'icons/play.svg';
   $('device-footer').textContent = status.message || (connectedSerial || '未连接设备');
-  if (!transactions.size) renderList();
+  renderList();
 }
 
 async function connectSelected() {
   const serial = deviceSelect.value;
   if (!serial) return;
+  renderDevice();
   renderConnection({ state: 'connecting', message: '连接中' });
   const result = await window.inspector.connect(serial);
   if (result.error) renderConnection({ state: 'error', message: result.error });
@@ -206,6 +222,7 @@ async function refreshDevices() {
   }
   for (const serial of result.devices) deviceSelect.add(new Option(serial, serial));
   deviceSelect.value = result.devices.includes(current) ? current : result.devices[0];
+  renderDevice();
   if (connectedSerial !== deviceSelect.value) await connectSelected();
 }
 
@@ -213,24 +230,25 @@ window.inspector.onEvent((event) => {
   const previous = transactions.get(event.key) || {};
   transactions.set(event.key, { ...previous, ...event });
   while (transactions.size > 1000) transactions.delete(transactions.keys().next().value);
-  if (!selectedKey || !transactions.has(selectedKey)) selectedKey = event.key;
-  updateAppOptions();
-  renderList();
-  renderDetail();
+  renderDevice();
 });
 window.inspector.onStatus(renderConnection);
 
 $('refresh-devices').addEventListener('click', refreshDevices);
-deviceSelect.addEventListener('change', connectSelected);
+deviceSelect.addEventListener('change', () => {
+  requestSearch.value = '';
+  appFilter.value = '';
+  connectSelected();
+});
 $('connection-button').addEventListener('click', async () => {
   if (connectedSerial) await window.inspector.disconnect(); else await connectSelected();
 });
 $('clear-requests').addEventListener('click', () => {
-  transactions.clear();
+  for (const [key, item] of transactions) {
+    if (item.device === deviceSelect.value) transactions.delete(key);
+  }
   selectedKey = '';
-  updateAppOptions();
-  renderList();
-  renderDetail();
+  renderDevice();
 });
 requestSearch.addEventListener('input', renderList);
 appFilter.addEventListener('change', renderList);

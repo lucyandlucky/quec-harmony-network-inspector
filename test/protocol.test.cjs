@@ -11,6 +11,10 @@ function logLines(event, chunkLength = 36) {
     `09-30 15:02:02.100 1234 1234 I A0514C/com.quectel.ioe/QuecInspector: QNI1|session1|7|${index + 1}/${chunks.length}|${chunk}`);
 }
 
+function bareLogLines(event) {
+  return logLines(event).map((line) => line.replace('A0514C/com.quectel.ioe/', 'A0514c/'));
+}
+
 test('reassembles out-of-order and duplicate HiLog frames', () => {
   const assembler = new FrameAssembler();
   const request = {
@@ -32,4 +36,22 @@ test('ignores unrelated and malformed logs', () => {
   assert.equal(assembler.addLine('A0514C/com.demo/OtherTag: hello', 'device-1'), null);
   assert.equal(assembler.addLine('A0514C/com.demo/QuecInspector: QNI1|session1|7|2/1|bad', 'device-1'), null);
   assert.equal(assembler.addLine('A0514C/com.demo/QuecInspector: QNI1|session1|7|1/1|%ZZ', 'device-1'), null);
+});
+
+test('accepts device logs without a bundle prefix and reads bundle from the event', () => {
+  const assembler = new FrameAssembler();
+  const event = { phase: 'response', id: 3, method: 'GET', url: 'https://example.com',
+    bundleName: 'com.quectel.ioe', status: 200 };
+  const results = bareLogLines(event).map((line) => assembler.addLine(line, '127.0.0.1:5557')).filter(Boolean);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].bundleName, 'com.quectel.ioe');
+  assert.equal(results[0].device, '127.0.0.1:5557');
+});
+
+test('shows older bundleless events under an unknown app', () => {
+  const assembler = new FrameAssembler();
+  const event = { phase: 'request', id: 4, method: 'GET', url: 'https://example.com' };
+  const results = bareLogLines(event).map((line) => assembler.addLine(line, '127.0.0.1:5557')).filter(Boolean);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].bundleName, '未知应用');
 });

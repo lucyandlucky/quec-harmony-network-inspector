@@ -1,6 +1,6 @@
 'use strict';
 
-const LOG_LINE = /\bA0514C\/([^/\s]+)\/QuecInspector:\s*(QNI1\|.*)$/;
+const LOG_LINE = /\bA0514C\/(?:([^/\s:]+)\/)?QuecInspector:\s*(QNI1\|.*)$/i;
 const FRAME = /^QNI1\|([a-z0-9]+)\|(\d+)\|(\d+)\/(\d+)\|(.+)$/;
 
 class FrameAssembler {
@@ -22,8 +22,7 @@ class FrameAssembler {
       return null;
     }
 
-    const bundleName = log[1];
-    const key = `${device}|${bundleName}|${sessionId}|${eventId}`;
+    const key = `${device}|${sessionId}|${eventId}`;
     if (this.completed.has(key)) return null;
     let entry = this.pending.get(key);
     if (!entry) {
@@ -51,6 +50,8 @@ class FrameAssembler {
           typeof payload.url !== 'string') {
         return null;
       }
+      const bundleName = typeof payload.bundleName === 'string' && payload.bundleName.trim()
+        ? payload.bundleName : log[1] || '未知应用';
       this.completed.add(key);
       if (this.completed.size > 5000) this.completed.delete(this.completed.values().next().value);
       return { ...payload, bundleName, device, sessionId, key: `${device}|${bundleName}|${sessionId}|${payload.id}` };
