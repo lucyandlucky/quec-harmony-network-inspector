@@ -97,7 +97,7 @@ export function App() {
   const deviceRequests = useMemo(() => requestsForDevice(transactions.values(), selectedDevice), [transactions, selectedDevice])
   const appNames = useMemo(() => [...new Set(deviceRequests.map((item) => item.bundleName))].sort(), [deviceRequests])
   const filteredRequests = useMemo(() => filterRequests(deviceRequests, appFilter, search), [deviceRequests, appFilter, search])
-  const selectedItem = deviceRequests.find((item) => item.key === selectedKey) || deviceRequests[0] || null
+  const selectedItem = deviceRequests.find((item) => item.key === selectedKey) || deviceRequests.at(-1) || null
   const connected = connection.state === 'connected' && connection.serial === selectedDevice
 
   function selectDevice(serial: string): void {

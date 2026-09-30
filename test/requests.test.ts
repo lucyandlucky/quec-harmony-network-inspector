@@ -10,7 +10,7 @@ function event(device: string, id: number, bundleName: string, url: string): Ins
   }
 }
 
-test('device switch isolates requests, count, and package options', () => {
+test('device switch isolates requests and appends new records at the bottom', () => {
   const mixed = [
     event('127.0.0.1:5555', 1, 'com.older.app', 'https://example.com/old'),
     event('127.0.0.1:5557', 2, 'com.quectel.ioe', 'https://example.com/new'),
@@ -18,7 +18,7 @@ test('device switch isolates requests, count, and package options', () => {
   ]
   const selected = requestsForDevice(mixed, '127.0.0.1:5557')
   assert.equal(selected.length, 2)
-  assert.deepEqual(selected.map((item) => item.id), [3, 2])
+  assert.deepEqual(selected.map((item) => item.id), [2, 3])
   assert.deepEqual([...new Set(selected.map((item) => item.bundleName))].sort(), ['com.other.app', 'com.quectel.ioe'])
   assert.deepEqual(filterRequests(selected, 'com.quectel.ioe', 'NEW').map((item) => item.id), [2])
   assert.deepEqual(requestsForDevice(mixed, '127.0.0.1:5555').map((item) => item.id), [1])
