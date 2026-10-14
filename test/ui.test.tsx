@@ -22,11 +22,13 @@ test('selecting 5557 shows only its requests and keeps details and cURL usable',
     return { error: '' }
   })
   const copy = vi.fn(async (_value: string) => {})
+  const showRequestMenu = vi.fn(async (_options: { url: string; curl: string }) => {})
   const bridge: InspectorBridge = {
     listDevices: async () => ({ devices: ['127.0.0.1:5555', '127.0.0.1:5557'], error: '' }),
     connect,
     disconnect: async () => {},
     copy,
+    showRequestMenu,
     onEvent: (listener) => { eventListeners.add(listener); return () => { eventListeners.delete(listener) } },
     onStatus: (listener) => { statusListeners.add(listener); return () => { statusListeners.delete(listener) } }
   }
@@ -63,4 +65,11 @@ test('selecting 5557 shows only its requests and keeps details and cURL usable',
   expect(screen.getByText(/curl -X 'GET' 'https:\/\/example.com\/latest'/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '复制 cURL' }))
   await waitFor(() => expect(copy).toHaveBeenCalledWith(expect.stringContaining('https://example.com/latest')))
+
+  fireEvent.contextMenu(within(list).getByTitle('GET https://example.com/new'))
+  expect(screen.getByRole('heading', { name: '/new' })).toBeTruthy()
+  expect(showRequestMenu).toHaveBeenCalledWith({
+    url: 'https://example.com/new',
+    curl: expect.stringContaining("curl -X 'GET' 'https://example.com/new'")
+  })
 })

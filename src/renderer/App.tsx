@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildCurl } from '../curl'
 import type { ConnectionStatus, InspectorEvent } from '../types'
 import activityIcon from '../icons/activity.svg'
 import cableIcon from '../icons/cable.svg'
@@ -185,7 +186,12 @@ export function App() {
           </div> : filteredRequests.map((item) => {
             const status = statusOf(item)
             return <button key={item.key} className={`request-row${selectedItem?.key === item.key ? ' selected' : ''}`}
-              type="button" title={`${item.method} ${item.url}`} onClick={() => setSelectedKey(item.key)}>
+              type="button" title={`${item.method} ${item.url}`} onClick={() => setSelectedKey(item.key)}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                setSelectedKey(item.key)
+                void window.inspector.showRequestMenu({ url: item.url, curl: buildCurl(item).command })
+              }}>
               <span className="request-name">
                 <span className="request-primary"><span className={`method ${item.method}`}>{item.method}</span>
                   <span className="request-path">{requestPath(item.url)}</span></span>

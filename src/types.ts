@@ -26,11 +26,17 @@ export interface ConnectionStatus {
   message?: string
 }
 
+export interface RequestMenuOptions {
+  url: string
+  curl: string
+}
+
 export interface InspectorBridge {
   listDevices(): Promise<{ devices: string[]; error: string }>
   connect(serial: string): Promise<{ error: string }>
   disconnect(): Promise<void>
   copy(value: string): Promise<void>
+  showRequestMenu(options: RequestMenuOptions): Promise<void>
   onEvent(callback: (event: InspectorEvent) => void): () => void
   onStatus(callback: (status: ConnectionStatus) => void): () => void
 }

@@ -1,7 +1,7 @@
 import path from 'node:path'
-import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Menu } from 'electron'
 import { findHdc, listDevices, HdcCollector } from './collector'
-import type { ConnectionStatus, InspectorEvent } from './types'
+import type { ConnectionStatus, InspectorEvent, RequestMenuOptions } from './types'
 
 let window: BrowserWindow | null = null
 let collector: HdcCollector | null = null
@@ -66,6 +66,17 @@ void app.whenReady().then(() => {
   })
   ipcMain.handle('clipboard:write', (_event, value: unknown) => {
     if (typeof value === 'string') clipboard.writeText(value)
+  })
+  ipcMain.handle('request:context-menu', (event, options: unknown) => {
+    if (!options || typeof options !== 'object') return
+    const { url, curl } = options as Partial<RequestMenuOptions>
+    if (typeof url !== 'string' || typeof curl !== 'string') return
+    const sourceWindow = BrowserWindow.fromWebContents(event.sender)
+    if (!sourceWindow || sourceWindow.isDestroyed()) return
+    Menu.buildFromTemplate([
+      { label: '复制 cURL', enabled: Boolean(curl), click: () => clipboard.writeText(curl) },
+      { label: '复制 URL', enabled: Boolean(url), click: () => clipboard.writeText(url) }
+    ]).popup({ window: sourceWindow })
   })
 })
 

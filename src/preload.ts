@@ -6,6 +6,7 @@ const bridge: InspectorBridge = {
   connect: (serial) => ipcRenderer.invoke('collector:connect', serial),
   disconnect: () => ipcRenderer.invoke('collector:disconnect'),
   copy: (value) => ipcRenderer.invoke('clipboard:write', value),
+  showRequestMenu: (options) => ipcRenderer.invoke('request:context-menu', options),
   onEvent: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: InspectorEvent): void => callback(payload)
     ipcRenderer.on('collector:event', listener)
