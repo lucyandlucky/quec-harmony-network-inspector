@@ -9,7 +9,8 @@ function response(device: string, id: number, path: string): InspectorEvent {
   return {
     phase: 'response', id, time: id, startedAt: id, durationMs: 388,
     method: 'GET', url: `https://example.com${path}`, status: 200,
-    requestHeaders: { Authorization: 'Bearer token' }, responseBody: '{"code":200}', responseBodyType: 'json',
+    requestHeaders: { Authorization: 'Bearer token' }, requestBody: '{"email":"a@example.com"}', requestBodyType: 'json',
+    responseHeaders: { 'Content-Type': 'application/json' }, responseBody: '{"code":200}', responseBodyType: 'json',
     bundleName: 'com.quectel.ioe', device, sessionId: 'session', key: `${device}|com.quectel.ioe|session|${id}`
   }
 }
@@ -57,8 +58,14 @@ test('selecting 5557 shows only its requests and keeps details and cURL usable',
   expect(screen.getAllByText('388 ms').length).toBeGreaterThan(0)
   expect(screen.getByRole('heading', { name: '/latest' })).toBeTruthy()
 
-  fireEvent.click(screen.getByRole('button', { name: '请求头 / 响应头' }))
+  fireEvent.click(screen.getByRole('button', { name: '请求' }))
+  expect(screen.getByText('Request Headers')).toBeTruthy()
   expect(screen.getByText('Bearer token')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Body' }))
+  expect(screen.getByText(/"email": "a@example.com"/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '响应' }))
+  expect(screen.getByText('Response Headers')).toBeTruthy()
+  expect(screen.getByText('application/json')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Body' }))
   expect(screen.getByText(/"code": 200/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'cURL' }))

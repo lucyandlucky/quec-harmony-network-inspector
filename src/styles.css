@@ -106,6 +106,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .detail-content { flex: 1; min-height: 0; overflow: auto; padding: 22px 28px 34px; }
 .content-section + .content-section { margin-top: 28px; }
 .content-section h3 { margin: 0 0 12px; color: #52615a; font-size: 12px; font-weight: 700; }
+.data-section { min-height: 100%; }
+.data-section h3 { margin: 22px 0 12px; color: #52615a; font-size: 12px; font-weight: 700; }
+.data-tabs { height: 38px; display: flex; align-items: stretch; gap: 24px; border-bottom: 1px solid #dce3df; }
+.data-tab { position: relative; border: 0; background: none; color: #77867e; font-weight: 550; }
+.data-tab:hover { color: #244e3d; }
+.data-tab.active { color: #167051; font-weight: 650; }
+.data-tab.active::after { content: ""; position: absolute; height: 2px; left: 0; right: 0; bottom: 0; background: #218060; }
 .info-grid { margin: 0; border-top: 1px solid #e1e7e3; }
 .info-row { display: grid; grid-template-columns: minmax(100px, 150px) minmax(0, 1fr); }
 .info-grid dt, .info-grid dd { margin: 0; padding: 10px 0; border-bottom: 1px solid #e1e7e3; line-height: 1.5; overflow-wrap: anywhere; }

@@ -5,7 +5,8 @@ import activityIcon from '../icons/activity.svg'
 import copyIcon from '../icons/copy.svg'
 import { dateTimeOf, durationOf, requestPath, statusOf, timeOf } from './format'
 
-type DetailTab = 'overview' | 'headers' | 'body' | 'curl'
+type DetailTab = 'overview' | 'response' | 'request' | 'curl'
+type DataTab = 'headers' | 'body'
 
 function displayValue(value: unknown): string {
   if (value === undefined || value === null || value === '') return '-'
@@ -34,7 +35,20 @@ function BodyBlock({ body, type }: { body?: string; type?: string }) {
   return <pre className="code-block">{value}</pre>
 }
 
-function DetailContent({ item, tab }: { item: InspectorEvent; tab: DetailTab }) {
+function DataTabs({ activeTab, onChange }: { activeTab: DataTab; onChange: (tab: DataTab) => void }) {
+  return <nav className="data-tabs" aria-label="数据详情">
+    {([['headers', 'Headers'], ['body', 'Body']] as Array<[DataTab, string]>).map(([key, label]) =>
+      <button key={key} type="button" className={`data-tab${activeTab === key ? ' active' : ''}`}
+        aria-current={activeTab === key ? 'page' : undefined} onClick={() => onChange(key)}>{label}</button>)}
+  </nav>
+}
+
+function DetailContent({ item, tab, dataTab, onDataTabChange }: {
+  item: InspectorEvent
+  tab: DetailTab
+  dataTab: DataTab
+  onDataTabChange: (tab: DataTab) => void
+}) {
   const curl = buildCurl(item)
   if (tab === 'overview') return <>
     <section className="content-section"><h3>请求</h3><InfoGrid entries={[
@@ -45,14 +59,16 @@ function DetailContent({ item, tab }: { item: InspectorEvent; tab: DetailTab }) 
       ['完成时间', item.phase === 'request' ? '-' : dateTimeOf(item.time)], ['错误', item.error]
     ]} /></section>
   </>
-  if (tab === 'headers') return <>
-    <section className="content-section"><h3>请求头</h3><HeaderGrid headers={item.requestHeaders} /></section>
-    <section className="content-section"><h3>响应头</h3><HeaderGrid headers={item.responseHeaders} /></section>
-  </>
-  if (tab === 'body') return <>
-    <section className="content-section"><h3>请求体</h3><BodyBlock body={item.requestBody} type={item.requestBodyType} /></section>
-    <section className="content-section"><h3>响应体</h3><BodyBlock body={item.responseBody} type={item.responseBodyType} /></section>
-  </>
+  if (tab === 'request') return <section className="data-section">
+    <DataTabs activeTab={dataTab} onChange={onDataTabChange} />
+    {dataTab === 'headers' ? <><h3>Request Headers</h3><HeaderGrid headers={item.requestHeaders} /></> :
+      <><h3>Request Body</h3><BodyBlock body={item.requestBody} type={item.requestBodyType} /></>}
+  </section>
+  if (tab === 'response') return <section className="data-section">
+    <DataTabs activeTab={dataTab} onChange={onDataTabChange} />
+    {dataTab === 'headers' ? <><h3>Response Headers</h3><HeaderGrid headers={item.responseHeaders} /></> :
+      <><h3>Response Body</h3><BodyBlock body={item.responseBody} type={item.responseBodyType} /></>}
+  </section>
   return <section className="content-section"><h3>cURL</h3>
     {curl.command ? <pre className="code-block curl">{curl.command}</pre> : <div className="error-text">{curl.error}</div>}
   </section>
@@ -60,11 +76,16 @@ function DetailContent({ item, tab }: { item: InspectorEvent; tab: DetailTab }) 
 
 export function RequestDetail({ item }: { item: InspectorEvent | null }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
+  const [requestDataTab, setRequestDataTab] = useState<DataTab>('headers')
+  const [responseDataTab, setResponseDataTab] = useState<DataTab>('headers')
   const [copied, setCopied] = useState(false)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setCopied(false)
+    setActiveTab('overview')
+    setRequestDataTab('headers')
+    setResponseDataTab('headers')
     if (copyTimer.current) clearTimeout(copyTimer.current)
     return () => { if (copyTimer.current) clearTimeout(copyTimer.current) }
   }, [item?.key])
@@ -79,7 +100,7 @@ export function RequestDetail({ item }: { item: InspectorEvent | null }) {
   const status = statusOf(item)
   const curl = buildCurl(item)
   const tabs: Array<[DetailTab, string]> = [
-    ['overview', '概览'], ['headers', '请求头 / 响应头'], ['body', 'Body'], ['curl', 'cURL']
+    ['overview', '概览'], ['response', '响应'], ['request', '请求'], ['curl', 'cURL']
   ]
 
   async function copyCurl(): Promise<void> {
@@ -111,7 +132,9 @@ export function RequestDetail({ item }: { item: InspectorEvent | null }) {
         {tabs.map(([key, label]) => <button key={key} type="button" className={`tab${activeTab === key ? ' active' : ''}`}
           aria-current={activeTab === key ? 'page' : undefined} onClick={() => setActiveTab(key)}>{label}</button>)}
       </nav>
-      <div className="detail-content"><DetailContent item={item} tab={activeTab} /></div>
+      <div className="detail-content"><DetailContent item={item} tab={activeTab}
+        dataTab={activeTab === 'request' ? requestDataTab : responseDataTab}
+        onDataTabChange={activeTab === 'request' ? setRequestDataTab : setResponseDataTab} /></div>
     </div>
   </main>
 }
