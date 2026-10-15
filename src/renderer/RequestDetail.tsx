@@ -4,6 +4,7 @@ import type { InspectorEvent } from '../types'
 import activityIcon from '../icons/activity.svg'
 import copyIcon from '../icons/copy.svg'
 import { dateTimeOf, durationOf, requestPath, statusOf, timeOf } from './format'
+import { BodyViewer } from './BodyViewer'
 
 type DetailTab = 'overview' | 'response' | 'request' | 'curl'
 type DataTab = 'headers' | 'body'
@@ -24,15 +25,6 @@ function InfoGrid({ entries }: { entries: Array<[string, unknown]> }) {
 function HeaderGrid({ headers }: { headers?: Record<string, unknown> }) {
   const entries = Object.entries(headers || {})
   return entries.length ? <InfoGrid entries={entries} /> : <div className="muted">(none)</div>
-}
-
-function BodyBlock({ body, type }: { body?: string; type?: string }) {
-  if (body === undefined || body === null) return <div className="muted">(none)</div>
-  let value = body
-  if (type === 'json' || type === 'text') {
-    try { value = JSON.stringify(JSON.parse(body), null, 2) } catch { /* keep raw text */ }
-  }
-  return <pre className="code-block">{value}</pre>
 }
 
 function DataTabs({ activeTab, onChange }: { activeTab: DataTab; onChange: (tab: DataTab) => void }) {
@@ -62,12 +54,12 @@ function DetailContent({ item, tab, dataTab, onDataTabChange }: {
   if (tab === 'request') return <section className="data-section">
     <DataTabs activeTab={dataTab} onChange={onDataTabChange} />
     {dataTab === 'headers' ? <><h3>Request Headers</h3><HeaderGrid headers={item.requestHeaders} /></> :
-      <><h3>Request Body</h3><BodyBlock body={item.requestBody} type={item.requestBodyType} /></>}
+      <><h3>Request Body</h3><BodyViewer key={`${item.key}:request`} body={item.requestBody} type={item.requestBodyType} /></>}
   </section>
   if (tab === 'response') return <section className="data-section">
     <DataTabs activeTab={dataTab} onChange={onDataTabChange} />
     {dataTab === 'headers' ? <><h3>Response Headers</h3><HeaderGrid headers={item.responseHeaders} /></> :
-      <><h3>Response Body</h3><BodyBlock body={item.responseBody} type={item.responseBodyType} /></>}
+      <><h3>Response Body</h3><BodyViewer key={`${item.key}:response`} body={item.responseBody} type={item.responseBodyType} /></>}
   </section>
   return <section className="content-section"><h3>cURL</h3>
     {curl.command ? <pre className="code-block curl">{curl.command}</pre> : <div className="error-text">{curl.error}</div>}

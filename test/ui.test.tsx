@@ -1,9 +1,56 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../src/renderer/App'
+import { BodyViewer } from '../src/renderer/BodyViewer'
 import type { ConnectionStatus, InspectorBridge, InspectorEvent } from '../src/types'
 
 afterEach(cleanup)
+
+test('JSON bodies collapse nested fields and shorten long strings without losing the source', () => {
+  const longText = `long-value-${'x'.repeat(200)}`
+  const body = JSON.stringify({ code: 200, data: { total: 47, list: [{ name: 'device' }] }, longText, lastField: true }, null, 4)
+  render(<BodyViewer body={body} type="json" />)
+
+  expect(screen.getByText('"total"')).toBeTruthy()
+  expect(screen.getByText('"list"')).toBeTruthy()
+  expect(screen.queryByText('"device"')).toBeNull()
+  fireEvent.click(screen.getByText('"data"'))
+  expect(screen.queryByText('"total"')).toBeNull()
+  expect(screen.getByText('"lastField"')).toBeTruthy()
+  fireEvent.click(screen.getByText('"data"'))
+  expect(screen.getByText('"total"')).toBeTruthy()
+
+  expect(screen.queryByText(`"${longText}"`)).toBeNull()
+  fireEvent.click(screen.getByText(/^"long-value-x+\.\.\.$/))
+  expect(screen.getByText(`"${longText}"`)).toBeTruthy()
+  fireEvent.click(screen.getByText(`"${longText}"`))
+  expect(screen.queryByText(`"${longText}"`)).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: '原始文本' }))
+  expect(screen.queryByLabelText('JSON Body')).toBeNull()
+  expect(document.querySelector('pre')?.textContent).toBe(body)
+  fireEvent.click(screen.getByRole('button', { name: 'JSON 树' }))
+  expect(screen.getByLabelText('JSON Body')).toBeTruthy()
+})
+
+test.each([
+  ['json', '{invalid json'], ['text', '<html>response</html>'],
+  ['json', 'null'], ['json', '42'], ['text', '"plain string"'], ['binary', 'eyJjb2RlIjoyMDB9']
+])('non-object body (%s, %s) remains readable as text', (type, body) => {
+  render(<BodyViewer body={body} type={type} />)
+  expect(document.querySelector('pre')?.textContent).toBe(body)
+  expect(screen.queryByRole('button', { name: 'JSON 树' })).toBeNull()
+})
+
+test('JSON arrays and empty or missing bodies remain readable', () => {
+  const view = render(<BodyViewer body='["first","second"]' type="text" />)
+  expect(screen.getByText('"first"')).toBeTruthy()
+  expect(screen.getByText('"second"')).toBeTruthy()
+  view.rerender(<BodyViewer body="" type="json" />)
+  expect(document.querySelector('pre')?.textContent).toBe('')
+  view.rerender(<BodyViewer />)
+  expect(screen.getByText('(none)')).toBeTruthy()
+})
 
 function response(device: string, id: number, path: string): InspectorEvent {
   return {
@@ -62,12 +109,14 @@ test('selecting 5557 shows only its requests and keeps details and cURL usable',
   expect(screen.getByText('Request Headers')).toBeTruthy()
   expect(screen.getByText('Bearer token')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Body' }))
-  expect(screen.getByText(/"email": "a@example.com"/)).toBeTruthy()
+  expect(screen.getByText('"email"')).toBeTruthy()
+  expect(screen.getByText('"a@example.com"')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '响应' }))
   expect(screen.getByText('Response Headers')).toBeTruthy()
   expect(screen.getByText('application/json')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Body' }))
-  expect(screen.getByText(/"code": 200/)).toBeTruthy()
+  expect(screen.getByText('"code"')).toBeTruthy()
+  expect(within(screen.getByLabelText('JSON Body')).getByText('200')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'cURL' }))
   expect(screen.getByText(/curl -X 'GET' 'https:\/\/example.com\/latest'/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '复制 cURL' }))
